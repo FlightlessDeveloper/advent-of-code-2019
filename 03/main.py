@@ -12,8 +12,10 @@ def main():
     paths_local = [parse_wire(wire) for wire in open(args.input_file)]
     traced_wires = [trace_wire(wire) for wire in paths_local]
 
-    crossover_points = sorted((point for point in traced_wires[0].intersection(traced_wires[1])), key=lambda p: manhatten_distance((0, 0), p))
-    print(f"Crossover points: {crossover_points}")
+    crossover_points = set(traced_wires[0].keys()).intersection(set(traced_wires[1].keys()))
+    print(f"Sorted by distance:\n{sorted(crossover_points, key=lambda p: manhatten_distance((0, 0), p))}\n")
+    crossovers_with_steps = [(x, y, traced_wires[0][x, y] + traced_wires[1][x, y]) for (x, y) in crossover_points]
+    print(f"Sorted by total steps:\n{sorted(crossovers_with_steps, key=lambda x: x[2])}")
 
 
 def parse_wire(wire_string):
@@ -21,29 +23,37 @@ def parse_wire(wire_string):
 
 
 def trace_wire(wire_local):
-    x, y = 0, 0
-    covered_locations = set()
+    x, y, steps = 0, 0, 0
+    steps_per_location = dict()
 
     for (length, direction) in wire_local:
         if direction == "L":
-            new_x = x - length
-            covered_locations.update([(cx, y) for cx in range(new_x, x + 1)])
-            x = new_x
+            for cx in range(x, x - length, -1):
+                if (cx, y) not in steps_per_location:
+                    steps_per_location[(cx, y)] = steps
+                steps += 1
+            x -= length
         elif direction == "R":
-            new_x = x + length
-            covered_locations.update([(cx, y) for cx in range(x, new_x + 1)])
-            x = new_x
-        elif direction == "U":
-            new_y = y + length
-            covered_locations.update([(x, cy) for cy in range(y, new_y + 1)])
-            y = new_y
+            for cx in range(x, x + length):
+                if (cx, y) not in steps_per_location:
+                    steps_per_location[(cx, y)] = steps
+                steps += 1
+            x += length
         elif direction == "D":
-            new_y = y - length
-            covered_locations.update([(x, cy) for cy in range(new_y, y + 1)])
-            y = new_y
+            for cy in range(y, y - length, -1):
+                if (x, cy) not in steps_per_location:
+                    steps_per_location[(x, cy)] = steps
+                steps += 1
+            y -= length
+        elif direction == "U":
+            for cy in range(y, y + length):
+                if (x, cy) not in steps_per_location:
+                    steps_per_location[(x, cy)] = steps
+                steps += 1
+            y += length
         else:
             raise Exception(f"Invalid direction '{direction}'")
-    return covered_locations
+    return steps_per_location
 
 
 def manhatten_distance(p1, p2):
