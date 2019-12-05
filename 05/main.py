@@ -33,21 +33,21 @@ def run_program(program_ints, input_values, debug=False):
             # Add
             lhs, rhs, out = calculate_args(intcode, tape, head, 3)
             if debug:
-                print(f"add {arg_to_string(tape, lhs)}, {arg_to_string(tape, rhs)}, {arg_to_string(tape, out)}")
+                print(f"01 add {arg_to_string(tape, lhs)}, {arg_to_string(tape, rhs)}, {arg_to_string(tape, out)}")
             write_at_parameter(tape, out, read_at_parameter(tape, lhs) + read_at_parameter(tape, rhs))
             head += 4
         elif opcode == 2:
             # Multiply
             lhs, rhs, out = calculate_args(intcode, tape, head, 3)
             if debug:
-                print(f"multiply {arg_to_string(tape, lhs)}, {arg_to_string(tape, rhs)}, {arg_to_string(tape, out)}")
+                print(f"02 multiply {arg_to_string(tape, lhs)}, {arg_to_string(tape, rhs)}, {arg_to_string(tape, out)}")
             write_at_parameter(tape, out, read_at_parameter(tape, lhs) * read_at_parameter(tape, rhs))
             head += 4
         elif opcode == 3:
             # Input
             arg, = calculate_args(intcode, tape, head, 1)
             if debug:
-                print(f"input {arg_to_string(tape, arg)}, {input_values[inputs_head]}")
+                print(f"03 input {arg_to_string(tape, arg)}, {input_values[inputs_head]}")
             write_at_parameter(tape, arg, input_values[inputs_head])
             inputs_head += 1
             head += 2
@@ -55,12 +55,46 @@ def run_program(program_ints, input_values, debug=False):
             # Output
             arg, = calculate_args(intcode, tape, head, 1)
             if debug:
-                print(f"output {arg_to_string(tape, arg)}")
+                print(f"04 output {arg_to_string(tape, arg)}")
             output = read_at_parameter(tape, arg)
             print(f"Message from program: '{output}'")
             head += 2
+        elif opcode == 5:
+            # Jump if true
+            cond, new_head = calculate_args(intcode, tape, head, 2)
+            if debug:
+                print(f"05 jump-if-true {arg_to_string(tape, cond)}, {arg_to_string(tape, new_head)}")
+            if read_at_parameter(tape, cond) != 0:
+                head = read_at_parameter(tape, new_head)
+            else:
+                head += 3
+        elif opcode == 6:
+            # Jump if false
+            cond, new_head = calculate_args(intcode, tape, head, 2)
+            if debug:
+                print(f"06 jump-if-false {arg_to_string(tape, cond)}, {arg_to_string(tape, new_head)}")
+            if read_at_parameter(tape, cond) == 0:
+                head = read_at_parameter(tape, new_head)
+            else:
+                head += 3
+        elif opcode == 7:
+            # Less than
+            lhs, rhs, out = calculate_args(intcode, tape, head, 3)
+            if debug:
+                print(f"07 less-than {arg_to_string(tape, lhs)}, {arg_to_string(tape, rhs)}, {arg_to_string(tape, out)}")
+            result = 1 if read_at_parameter(tape, lhs) < read_at_parameter(tape, rhs) else 0
+            write_at_parameter(tape, out, result)
+            head += 4
+        elif opcode == 8:
+            # Equals
+            lhs, rhs, out = calculate_args(intcode, tape, head, 3)
+            if debug:
+                print(f"08 equals {arg_to_string(tape, lhs)}, {arg_to_string(tape, rhs)}, {arg_to_string(tape, out)}")
+            result = 1 if read_at_parameter(tape, lhs) == read_at_parameter(tape, rhs) else 0
+            write_at_parameter(tape, out, result)
+            head += 4
         elif opcode == 99:
-            # Stop
+            print(f"99 STOP")
             break
         else:
             raise Exception(f"Unknown opcode '{opcode}'")
@@ -105,7 +139,7 @@ def debug_print_tape(tape, head):
 def arg_to_string(tape, arg):
     mode, value = arg
     if mode == 0:
-        return f"pos:[{value}]->{tape[value]}"
+        return f"pos:{value}({tape[value]})"
     elif mode == 1:
         return f"imm:{value}"
     else:
