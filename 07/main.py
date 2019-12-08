@@ -1,4 +1,5 @@
 import argparse
+import itertools
 
 
 def parse_args():
@@ -15,20 +16,54 @@ def main():
     program_ints = [int(x) for x in input_lines[0].split(",")]
     debug = args.debug
 
+    # part_1_best_order, part_1_best_power = find_best_power(program_ints, [0, 1, 2, 3, 4], debug)
+    # print(f"Part 1:\n{part_1_best_order}: {part_1_best_power}\n")
+
+    part_2_best_order, part_2_best_power = find_best_power_rec(program_ints, [5, 6, 7, 8, 9], debug)
+    print(f"Part 2:\n{part_2_best_order}: {part_2_best_power}")
+
+
+def find_best_power(program_ints, phases, debug):
     best_power = 0
     best_order = []
-    for inputs in get_permutations_of_list([0, 1, 2, 3, 4]):
+    for inputs in get_permutations_of_list(phases):
         power = 0
         for phase in inputs:
-            program_outputs = run_program(program_ints, [phase, power], debug)
+            _, _, program_outputs = run_program(program_ints, [phase, power], debug)
             if len(program_outputs) != 1:
                 raise Exception(f"Should be 1 output but found {len(program_outputs)}")
             power = program_outputs[0]
         if power > best_power:
             best_power = power
             best_order = inputs
-        print(f"{inputs}: {power}")
-    print(f"Best order is {best_order} with a power of {best_power}")
+        if debug:
+            print(f"{inputs}: {power}")
+    return best_order, best_power
+
+
+def find_best_power_rec(program_ints, phases, debug):
+    best_power = 0
+    best_order = []
+    for phase_order in get_permutations_of_list(phases):
+        programs = [(program_ints, 0) for _ in phase_order]
+        last_output = 0
+        for i in itertools.count():
+            program_memory, program_head = programs[i % len(phase_order)]
+            inputs = [phase_order[i], last_output] if i < len(phase_order) else [last_output]
+            new_tape, new_head, outputs = run_program(program_memory, inputs, debug, program_head, True)
+            programs[i % len(phase_order)] = (new_tape, new_head)
+            if len(outputs) == 0:
+                break
+            elif len(outputs) == 1:
+                last_output = outputs[0]
+            else:
+                raise Exception(f"Expected 0 or 1 outputs but got {len(outputs)}: {outputs}")
+        if last_output > best_power:
+            best_power = last_output
+            best_order = phase_order
+        if debug:
+            print(f"{phase_order}: {last_output}")
+    return best_order, best_power
 
 
 def get_permutations_of_list(l):
@@ -38,10 +73,9 @@ def get_permutations_of_list(l):
         return [[l[i]] + tail for i in range(len(l)) for tail in get_permutations_of_list(l[:i] + l[i + 1:])]
 
 
-# This is copied from day 05 with minor alterations
-def run_program(program_ints, input_values, debug=False):
+# This is copied from day 05 with alterations to allow programs to be stopped and started mid-execution
+def run_program(program_ints, input_values, debug, head=0, stop_on_output=False):
     tape = [x for x in program_ints]
-    head = 0
     inputs_head = 0
     # We need to read the output values rather than print them this time
     output_values = []
@@ -80,6 +114,8 @@ def run_program(program_ints, input_values, debug=False):
             output = read_at_parameter(tape, arg)
             output_values += [output]
             head += 2
+            if stop_on_output:
+                break
         elif opcode == 5:
             # Jump if true
             cond, new_head = calculate_args(intcode, tape, head, 2)
@@ -120,7 +156,7 @@ def run_program(program_ints, input_values, debug=False):
             break
         else:
             raise Exception(f"Unknown opcode '{opcode}'")
-    return output_values
+    return tape, head, output_values
 
 
 def calculate_args(intcode, tape, head, num_args):
