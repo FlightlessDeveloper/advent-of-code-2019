@@ -22,6 +22,7 @@ def main():
 
 # Mostly copied from day 5
 def run_program(program_ints, input_values, debug=False):
+    # TODO: There is no reason this should be a defaultdict over a normal dict
     tape = defaultdict()
     for i, v in enumerate(program_ints):
         tape[i] = v
