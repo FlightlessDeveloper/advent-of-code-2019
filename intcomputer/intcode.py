@@ -1,5 +1,8 @@
+from collections import defaultdict
+
+
 def run_intcode(program_ints, input_generator, debug=False):
-    tape = {}
+    tape = defaultdict(lambda: 0)
     for i, v in enumerate(program_ints):
         tape[i] = v
     head = 0
