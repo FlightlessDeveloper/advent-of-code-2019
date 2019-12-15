@@ -5,6 +5,7 @@ from collections import namedtuple, defaultdict
 
 Recipe = namedtuple("Recipe", "chemical_produced chemicals_needed")
 Chemical = namedtuple("Chemical", "name quantity")
+ONE_BILLION = 1000000000000
 
 
 def parse_args():
@@ -16,15 +17,28 @@ def parse_args():
 
 def main():
     args = parse_args()
+    debug = args.debug
     reactions_list = [parse_line(line.strip()) for line in open(args.input_file) if len(line.strip()) > 0]
     reactions_dict = dict((recipe.chemical_produced.name, recipe) for recipe in reactions_list)
 
-    # Part 1
-    resource_steps = [x for x in get_ore_for_recipe(reactions_dict['FUEL'], reactions_dict)]
-    if args.debug:
+    print(f"ORE needed for 1 FUEL: {get_ore_needed_for_fuel(1, reactions_dict, debug)}")
+
+    fuel_for_one_billion_ore = binary_search(1, ONE_BILLION, get_fuel_generation_test(reactions_dict, args.debug))
+    print(f"FUEL that can be produced with 1 billion ORE: {fuel_for_one_billion_ore}")
+
+
+def get_ore_needed_for_fuel(target_fuel, reactions, debug=False):
+    fuel_recipe = multiply_recipe(reactions['FUEL'], target_fuel)
+    resource_steps = [x for x in get_ore_for_recipe(fuel_recipe, reactions)]
+    if debug:
         for step in resource_steps:
             print(resources_to_string(step))
-    print(f"Final ORE needed: {resource_steps[-1]['ORE']}")
+    return resource_steps[-1]['ORE']
+
+
+def multiply_recipe(recipe, multiplicand):
+    return Recipe(Chemical(recipe.chemical_produced.name, recipe.chemical_produced.quantity * multiplicand),
+                  [Chemical(chem.name, chem.quantity * multiplicand) for chem in recipe.chemicals_needed])
 
 
 def get_ore_for_recipe(recipe, reactions):
@@ -41,11 +55,10 @@ def get_ore_for_recipe(recipe, reactions):
 def calculate_resources(recipe, target_quantity):
     if target_quantity <= 0:
         return defaultdict(lambda: 0, [Chemical(recipe.chemical_produced.name, target_quantity)])
-    multiplicand = ceil(target_quantity / recipe.chemical_produced.quantity)
-    result_resources = Chemical(recipe.chemical_produced.name,
-                                target_quantity - multiplicand * recipe.chemical_produced.quantity)
-    result_materials = [Chemical(chemical.name, multiplicand * chemical.quantity)
-                        for chemical in recipe.chemicals_needed]
+    quantified_recipe = multiply_recipe(recipe, ceil(target_quantity / recipe.chemical_produced.quantity))
+    result_resources = Chemical(quantified_recipe.chemical_produced.name,
+                                target_quantity - quantified_recipe.chemical_produced.quantity)
+    result_materials = quantified_recipe.chemicals_needed
     result_materials.append(result_resources)
     return defaultdict(lambda: 0, result_materials)
 
@@ -55,6 +68,28 @@ def sum_resources(resource_dicts):
     for k in set().union(*[d.keys() for d in resource_dicts]):
         combined_resources[k] = sum(d[k] for d in resource_dicts)
     return combined_resources
+
+
+def binary_search(min_target, max_target, run_test):
+    new_target = (min_target + max_target) // 2
+    result = run_test(new_target)
+    if result > 0:
+        return binary_search(min_target, new_target, run_test)
+    elif result < 0:
+        return binary_search(new_target, max_target, run_test)
+    else:
+        return new_target
+
+
+def get_fuel_generation_test(reactions_dict, debug=False):
+    def test_function(target_fuel):
+        if get_ore_needed_for_fuel(target_fuel, reactions_dict, debug) > ONE_BILLION:
+            return 1
+        elif get_ore_needed_for_fuel(target_fuel + 1, reactions_dict, debug) <= ONE_BILLION:
+            return -1
+        else:
+            return 0
+    return test_function
 
 
 def parse_line(line):
