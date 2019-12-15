@@ -1,6 +1,10 @@
 import argparse
-import itertools
+from copy import copy
+import operator
+from functools import reduce
+from itertools import count, takewhile
 from collections import namedtuple
+from advent_helpers import generate_primes
 
 
 NUM_STEPS = 1000
@@ -19,11 +23,24 @@ def main():
     args = parse_args()
     moons = [parse_line(x) for x in open(args.input_file) if len(x.strip()) > 0]
     debug = args.debug
+
+    # Part 1
     steps_generator = (x for x in generate_steps(moons, debug))
     if debug:
         print(f"Step 0:\n{moons_to_string(moons)}\n")
     steps = [next(steps_generator) for _ in range(NUM_STEPS + 1)]
     print(f"Energy at step {NUM_STEPS}: {get_energy(steps[NUM_STEPS])}")
+
+    # Part 2
+    x_start, x_end = find_repeat(generate_steps([ony_use_axis(moon, 0) for moon in moons], debug))
+    print(f"x: {x_start} to {x_end}")
+    y_start, y_end = find_repeat(generate_steps([ony_use_axis(moon, 1) for moon in moons], debug))
+    print(f"y: {y_start} to {y_end}")
+    z_start, z_end = find_repeat(generate_steps([ony_use_axis(moon, 2) for moon in moons], debug))
+    print(f"z: {z_start} to {z_end}")
+    first_repeat_index = \
+        find_lowest_with_factors([x_end - x_start, y_end - y_start, z_end - z_start]) + max(x_start, y_start, z_start)
+    print(f"First repeated step is {first_repeat_index}")
 
 
 def parse_line(s):
@@ -33,15 +50,15 @@ def parse_line(s):
 
 def generate_steps(moon_positions, debug=False):
     moons = [x for x in moon_positions]
-    yield moons
-    for step_number in itertools.count(1):
+    yield copy(moons)
+    for step_number in count(1):
         for i, j in [(i, j) for i in range(len(moons)) for j in range(len(moons)) if i < j]:
             moons[i], moons[j] = apply_gravity(moons[i], moons[j])
         for k in range(len(moons)):
             moons[k] = apply_velocity(moons[k])
         if debug:
             print(f"Step {step_number}:\n{moons_to_string(moons)}\n")
-        yield moons
+        yield copy(moons)
 
 
 def apply_gravity(l, r):
@@ -71,6 +88,36 @@ def apply_velocity(moon):
 
 def get_energy(moons):
     return sum([(abs(m.position.x) + abs(m.position.y) + abs(m.position.z)) * (abs(m.velocity.x) + abs(m.velocity.y) + abs(m.velocity.z)) for m in moons])
+
+
+def ony_use_axis(moon, axis):
+    return Moon(Vector3(*(v if i == axis else 0 for i, v in enumerate(moon.position))),
+                Vector3(*(v if i == axis else 0 for i, v in enumerate(moon.velocity))))
+
+
+def find_repeat(generator):
+    outputs = {}
+    for i in count(0):
+        next_output = next(generator)
+        moons_hash = "".join([hash_moon(m) for m in next_output])
+        if moons_hash in outputs:
+            return outputs[moons_hash], i
+        outputs[moons_hash] = i
+
+
+def hash_moon(m):
+    return f"[{m.position.x}|{m.position.y}|{m.position.z}:{m.velocity.x}|{m.velocity.y}|{m.velocity.z}]"
+
+
+def find_lowest_with_factors(args):
+    prime_factors = set()
+    for x in args:
+        prime_factors.update(p for p in takewhile(lambda p: p < x, generate_primes()) if x % p == 0)
+    step_num = reduce(operator.mul, (x for x in prime_factors), 1)
+    for i in count(1):
+        test_num = i * step_num
+        if all((test_num % x) == 0 for x in args):
+            return test_num
 
 
 def moon_to_string(moon):
