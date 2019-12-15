@@ -1,5 +1,5 @@
 import argparse
-from intcomputer import run_intcode
+from advent_helpers import run_intcode
 
 
 def parse_args():

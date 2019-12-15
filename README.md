@@ -3,4 +3,4 @@
 Solutions for advent of code 2019.
 If you look at this before you did one of the days then you're a dirty cheater.
 
-Remember to include `intcomputer` in the `pythonpath`
+Remember to include `helpers` in the `pythonpath`

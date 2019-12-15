@@ -139,3 +139,8 @@ def arg_to_string(tape, arg):
         return f"imm:{value}"
     else:
         return f"invalid({mode}){value}"
+
+
+def lambda_to_generator(func):
+    while True:
+        yield func()

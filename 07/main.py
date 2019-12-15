@@ -1,6 +1,6 @@
 import argparse
 import itertools
-from intcomputer import run_intcode
+from advent_helpers import run_intcode, get_permutations_of_list
 
 
 def parse_args():
@@ -65,13 +65,6 @@ def find_best_power_rec(program_ints, phases, debug):
         if debug:
             print(f"{phase_order}: {last_output}")
     return best_order, best_power
-
-
-def get_permutations_of_list(l):
-    if (len(l)) == 0:
-        return [[]]
-    else:
-        return [[l[i]] + tail for i in range(len(l)) for tail in get_permutations_of_list(l[:i] + l[i + 1:])]
 
 
 if __name__ == "__main__":
