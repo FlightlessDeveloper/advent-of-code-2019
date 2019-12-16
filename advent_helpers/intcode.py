@@ -1,7 +1,7 @@
 from collections import defaultdict
 
 
-def run_intcode(program_ints, input_generator, debug=False):
+def run_intcode(program_ints, input_iterator, debug=False):
     tape = defaultdict(lambda: 0)
     for i, v in enumerate(program_ints):
         tape[i] = v
@@ -29,7 +29,12 @@ def run_intcode(program_ints, input_generator, debug=False):
         elif opcode == 3:
             # Input
             arg, = calculate_args(intcode, tape, head, 1)
-            next_input = next(input_generator)
+            try:
+                next_input = next(input_iterator)
+            except StopIteration:
+                if debug:
+                    print(f"03 input (NO INPUT LEFT!)")
+                break
             if debug:
                 print(f"03 input {arg_to_string(tape, arg)}, {next_input}")
             write_at_parameter(tape, arg, next_input, relative_base)
